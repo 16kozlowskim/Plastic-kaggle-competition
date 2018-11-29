@@ -1,35 +1,52 @@
-import time
-import sys
 import utils
 import pandas as pd
 import numpy as np
-import tensorflow as tf
+import time
 import matplotlib.pyplot as plt
 
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import StratifiedKFold
-from keras.callbacks import ModelCheckpoint
-
-from keras.models import Sequential, load_model
-from keras.layers import Dense, BatchNormalization, Dropout, Activation
-from keras.utils import to_categorical
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 #path_to_data = '/courses/cs342/Assignment2/'
 path_to_data = ''
-split_count = 4
+
+train, train_meta = utils.load_train(path_to_data)
+
+g_train, eg_train, g_meta, eg_meta, g_target, eg_target = utils.gal_split_data(train, train_meta, True)
+
+g_features = utils.preprocess_data(g_train, g_meta)
+
+eg_features = utils.preprocess_data(eg_train, eg_meta)
+
+
+#X_train, X_test, y_train, y_test = train_test_split(g_features, g_target, test_size = 0.1, random_state=0)
+
+
+g_clf = RandomForestClassifier(n_estimators=200, max_depth=25)
+g_clf.fit(g_train, g_target)
+
+#prediction = g_clf.predict(X_test)
+
+#print metrics.classification_report(y_test, prediction)
+
+
+#X_train, X_test, y_train, y_test = train_test_split(eg_features, eg_target, test_size = 0.1, random_state=0)
+
+
+eg_clf = RandomForestClassifier(n_estimators=200, max_depth=25)
+eg_clf.fit(eg_train, eg_target)
+
+#prediction = eg_clf.predict(X_test)
+
+#print metrics.classification_report(y_test, prediction)
 
 start = time.time()
 chunks = 5000000
 
 test_meta = pd.read_csv(path_to_data+'test_set_metadata.csv')
 
-g_wtable, eg_wtable = utils.get_wtables(path_to_data)
-
-g_clfs = utils.load_models(split_count, True, g_wtable)
-eg_clfs = utils.load_models(split_count, False, eg_wtable)
-
-folds = StratifiedKFold(n_splits = split_count, shuffle = True)
 
 straddler = None
 
@@ -56,7 +73,7 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
 
     if g_meta.shape[0] > 0:
         g_features = utils.preprocess_data(g_data, g_meta)
-        g_preds = utils.predict(g_clfs, g_features, folds)
+        g_preds = g_clf.predict_proba(g_features)
         g_preds_99 = utils.predict_99(g_preds)
         g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
         for i in utils.eg_class_names():
@@ -66,7 +83,7 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
 
     if eg_meta.shape[0] > 0:
         eg_features = utils.preprocess_data(eg_data, eg_meta)
-        eg_preds = utils.predict(eg_clfs, eg_features, folds)
+        eg_preds = eg_clf.predict_proba(eg_features)
         eg_preds_99 = utils.predict_99(eg_preds)
         eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
         for i in utils.g_class_names():
@@ -100,7 +117,7 @@ eg_preds_df = None
 
 if g_meta.shape[0] > 0:
     g_features = utils.preprocess_data(g_data, g_meta)
-    g_preds = utils.predict(g_clfs, g_features, folds)
+    g_preds = g_clf.predict_proba(g_features)
     g_preds_99 = utils.predict_99(g_preds)
     g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
     for i in utils.eg_class_names():
@@ -110,7 +127,7 @@ if g_meta.shape[0] > 0:
 
 if eg_meta.shape[0] > 0:
     eg_features = utils.preprocess_data(eg_data, eg_meta)
-    eg_preds = utils.predict(eg_clfs, eg_features, folds)
+    eg_preds = eg_clf.predict_proba(eg_features)
     eg_preds_99 = utils.predict_99(eg_preds)
     eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
     for i in utils.g_class_names():

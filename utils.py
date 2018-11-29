@@ -8,8 +8,9 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import StratifiedKFold
 from keras.callbacks import ModelCheckpoint
 
+from keras.regularizers import l2
 from keras.models import Sequential, load_model
-from keras.layers import Dense, BatchNormalization, Dropout, Activation
+from keras.layers import Dense, BatchNormalization, Dropout, Activation, Conv2D, Flatten, MaxPooling2D
 from keras.utils import to_categorical
 
 def multi_weighted_logloss(classes, y_ohe, y_p):
@@ -133,16 +134,21 @@ def preprocess_data(data, meta):
         ['mean', 'max', 'min', 'std']).unstack('passband').reset_index(drop=True)
 
     features = features.join(meta.drop(['object_id'], axis=1))
-    scaler = StandardScaler()
 
-    try:
-        features = scaler.fit_transform(features)
-    except:
-        print features.columns[features.isna().any()].tolist()
-        features = features.fillna(0)
-        features = scaler.fit_transform(features)
+    features = features.fillna(0)
 
     return features
+
+def standardize_data(features):
+    scaler = StandardScaler()
+    data = None
+    try:
+        data = scaler.fit_transform(features)
+    except:
+        data = features.fillna(0)
+        data = scaler.fit_transform(data)
+
+    return data
 
 def preprocess_target(target):
     le = LabelEncoder()
@@ -205,6 +211,48 @@ def train_mlp(features, wtable, labels, classes, target_map, is_galactic):
     for i in range(len(clfs)):
         filepath = './' + galactic + str(i) + '.h5'
         clfs[i].save(filepath)
+
+
+def train_conv_net(features, wtable, labels, classes, target_map, is_galactic):
+
+    clfs = []
+    folds = StratifiedKFold(n_splits=3, shuffle=True, random_state=1)
+    oof_preds = np.zeros((features.shape[0], len(classes)))
+
+    for fold_, (trn_, val_) in enumerate(folds.split(features, target_map)):
+
+        checkPoint = ModelCheckpoint("./best.model",monitor='val_loss',mode = 'min', save_best_only=True, verbose=1)
+
+        x_train, y_train = features[trn_], labels[trn_]
+        x_valid, y_valid = features[val_], labels[val_]
+
+        model = create_conv_model(features.shape[1:], len(classes))
+        model.compile(loss=mywloss_wrapper(wtable), optimizer='adam', metrics=['accuracy'])
+        history = model.fit(x_train, y_train,
+                        validation_data=[x_valid, y_valid],
+                        epochs=100, batch_size=128,shuffle=True,verbose=1,callbacks=[checkPoint])
+
+        #plot_loss_acc(history)
+
+        print('Loading Best Model')
+        model.load_weights('./best.model')
+        # Get predicted probabilities for each class
+        oof_preds[val_, :] = model.predict_proba(x_valid,batch_size=128)
+        print(multi_weighted_logloss(classes, y_valid, model.predict_proba(x_valid,batch_size=128)))
+        clfs.append(model)
+
+    print('MULTI WEIGHTED LOG LOSS : %.5f ' % multi_weighted_logloss(classes,labels,oof_preds))
+
+    galactic = None
+    if is_galactic:
+        galactic = 'g'
+    else:
+        galactic = 'eg'
+
+    for i in range(len(clfs)):
+        filepath = './' + galactic + str(i) + '.h5'
+        clfs[i].save(filepath)
+
 
 def get_class_names(path_to_data):
     sample_sub = pd.read_csv(path_to_data+'sample_submission.csv')
@@ -294,3 +342,58 @@ def split_conv(df):
     for i in range(object_count):
         objects.append(df.iloc[range(i*6,6+(i*6))].values)
     return objects
+
+def create_conv_model(input_shape, output_dimensions):
+    model = Sequential()
+
+    model.add(Conv2D(filters=8, kernel_size=(2,4), data_format='channels_first', padding='same', input_shape=input_shape))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+
+    model.add(Conv2D(filters=8, kernel_size=(2,4), data_format='channels_first', padding='same'))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+
+    model.add(MaxPooling2D(pool_size=(2,2), data_format='channels_first'))
+
+    model.add(Conv2D(filters=16, kernel_size=3, data_format='channels_first', padding='same'))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+
+    model.add(Conv2D(filters=16, kernel_size=3, data_format='channels_first', padding='same'))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+
+    model.add(MaxPooling2D(pool_size=(1,2), data_format='channels_first'))
+
+    model.add(Flatten(data_format='channels_first'))
+
+    model.add(Dense(output_dimensions*4))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.25))
+
+    model.add(Dense(output_dimensions*2))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.25))
+
+    model.add(Dense(output_dimensions))
+    model.add(Activation('softmax'))
+
+
+    return model
+
+def conv_data(data, columns):
+    conv_flux = conv_preprocess_data(data, 'flux', columns)
+    conv_flux_err = conv_preprocess_data(data, 'flux_err', columns)
+
+    conv_flux = split_conv(conv_flux)
+    conv_flux_err = split_conv(conv_flux_err)
+
+    conv = []
+
+    for i, j in zip(conv_flux, conv_flux_err):
+        conv.append([i, j])
+
+    return np.array(conv)

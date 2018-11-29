@@ -1,6 +1,7 @@
-import time
-import sys
 import utils
+import gc
+import time
+import warnings
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -12,12 +13,16 @@ from sklearn.model_selection import StratifiedKFold
 from keras.callbacks import ModelCheckpoint
 
 from keras.models import Sequential, load_model
-from keras.layers import Dense, BatchNormalization, Dropout, Activation
+from keras.layers import Dense, BatchNormalization, Dropout, Activation, Conv2D, Flatten, MaxPooling2D
 from keras.utils import to_categorical
+
+warnings.simplefilter(action = 'ignore')
+
 
 #path_to_data = '/courses/cs342/Assignment2/'
 path_to_data = ''
-split_count = 4
+split_count = 3
+columns = 128
 
 start = time.time()
 chunks = 5000000
@@ -55,8 +60,8 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
     eg_preds_df = None
 
     if g_meta.shape[0] > 0:
-        g_features = utils.preprocess_data(g_data, g_meta)
-        g_preds = utils.predict(g_clfs, g_features, folds)
+        g_conv_data = utils.conv_data(g_data, columns)
+        g_preds = utils.predict(g_clfs, g_conv_data, folds)
         g_preds_99 = utils.predict_99(g_preds)
         g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
         for i in utils.eg_class_names():
@@ -65,8 +70,8 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
         preds_df = g_preds_df
 
     if eg_meta.shape[0] > 0:
-        eg_features = utils.preprocess_data(eg_data, eg_meta)
-        eg_preds = utils.predict(eg_clfs, eg_features, folds)
+        eg_conv_data = utils.conv_data(eg_data, columns)
+        eg_preds = utils.predict(eg_clfs, eg_conv_data, folds)
         eg_preds_99 = utils.predict_99(eg_preds)
         eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
         for i in utils.g_class_names():
@@ -99,7 +104,7 @@ g_preds_df = None
 eg_preds_df = None
 
 if g_meta.shape[0] > 0:
-    g_features = utils.preprocess_data(g_data, g_meta)
+    g_conv_data = utils.conv_data(g_data, columns)
     g_preds = utils.predict(g_clfs, g_features, folds)
     g_preds_99 = utils.predict_99(g_preds)
     g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
@@ -109,7 +114,7 @@ if g_meta.shape[0] > 0:
     preds_df = g_preds_df
 
 if eg_meta.shape[0] > 0:
-    eg_features = utils.preprocess_data(eg_data, eg_meta)
+    eg_conv_data = utils.conv_data(eg_data, columns)
     eg_preds = utils.predict(eg_clfs, eg_features, folds)
     eg_preds_99 = utils.predict_99(eg_preds)
     eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
