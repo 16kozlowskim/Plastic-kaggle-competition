@@ -100,8 +100,8 @@ def create_model(input_dimensions, output_dimensions):
     return model
 
 def load_train(path_to_data):
-    train = pd.read_csv(path_to_data + 'aug_training_set.csv', header=0)
-    train_meta = pd.read_csv(path_to_data + 'aug_training_set_metadata.csv', header=0)
+    train = pd.read_csv(path_to_data + 'training_set.csv', header=0)
+    train_meta = pd.read_csv(path_to_data + 'training_set_metadata.csv', header=0)
 
     return train, train_meta
 
