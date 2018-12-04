@@ -22,7 +22,7 @@ warnings.simplefilter(action = 'ignore')
 #path_to_data = '/courses/cs342/Assignment2/'
 path_to_data = ''
 split_count = 3
-columns = 128
+columns = 64
 
 start = time.time()
 chunks = 5000000
@@ -45,6 +45,7 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
 
     arr = data_chunk['object_id'].unique()
     straddler = data_chunk.loc[data_chunk['object_id'] == arr[len(arr)-1]]
+    
     data_chunk = data_chunk[data_chunk.object_id != arr[len(arr)-1]]
     data_chunk = data_chunk.reset_index(drop=True)
 
@@ -105,7 +106,7 @@ eg_preds_df = None
 
 if g_meta.shape[0] > 0:
     g_conv_data = utils.conv_data(g_data, columns)
-    g_preds = utils.predict(g_clfs, g_features, folds)
+    g_preds = utils.predict(g_clfs, g_conv_data, folds)
     g_preds_99 = utils.predict_99(g_preds)
     g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
     for i in utils.eg_class_names():
@@ -115,7 +116,7 @@ if g_meta.shape[0] > 0:
 
 if eg_meta.shape[0] > 0:
     eg_conv_data = utils.conv_data(eg_data, columns)
-    eg_preds = utils.predict(eg_clfs, eg_features, folds)
+    eg_preds = utils.predict(eg_clfs, eg_conv_data, folds)
     eg_preds_99 = utils.predict_99(eg_preds)
     eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
     for i in utils.g_class_names():
@@ -126,4 +127,4 @@ if eg_meta.shape[0] > 0:
 if g_meta.shape[0] > 0 and eg_meta.shape[0] > 0:
     preds_df = pd.concat([g_preds_df, eg_preds_df], ignore_index=True)
 
-preds_df.to_csv('predictions.csv',  header=False, mode='a', index=False)
+preds_df.to_csv('predictions.csv', header=False, mode='a', index=False)

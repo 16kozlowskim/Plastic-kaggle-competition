@@ -20,7 +20,7 @@ warnings.simplefilter(action = 'ignore')
 
 
 path_to_data = ''
-columns = 128
+columns = 64
 
 train, train_meta = utils.load_train(path_to_data)
 

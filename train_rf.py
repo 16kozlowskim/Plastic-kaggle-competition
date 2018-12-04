@@ -16,16 +16,16 @@ train, train_meta = utils.load_train(path_to_data)
 
 g_train, eg_train, g_meta, eg_meta, g_target, eg_target = utils.gal_split_data(train, train_meta, True)
 
-g_features = utils.preprocess_data(g_train, g_meta)
+g_features = utils.feature_engineering(g_train, g_meta)
 
-eg_features = utils.preprocess_data(eg_train, eg_meta)
+eg_features = utils.feature_engineering(eg_train, eg_meta)
 
 
 #X_train, X_test, y_train, y_test = train_test_split(g_features, g_target, test_size = 0.1, random_state=0)
 
 
-g_clf = RandomForestClassifier(n_estimators=200, max_depth=25)
-g_clf.fit(g_train, g_target)
+g_clf = RandomForestClassifier(n_estimators=200, max_depth=25, random_state=0)
+g_clf.fit(g_features, g_target)
 
 #prediction = g_clf.predict(X_test)
 
@@ -35,12 +35,15 @@ g_clf.fit(g_train, g_target)
 #X_train, X_test, y_train, y_test = train_test_split(eg_features, eg_target, test_size = 0.1, random_state=0)
 
 
-eg_clf = RandomForestClassifier(n_estimators=200, max_depth=25)
-eg_clf.fit(eg_train, eg_target)
+eg_clf = RandomForestClassifier(n_estimators=200, max_depth=25, random_state=0)
+eg_clf.fit(eg_features, eg_target)
 
 #prediction = eg_clf.predict(X_test)
 
 #print metrics.classification_report(y_test, prediction)
+
+#import sys
+#sys.exit()
 
 start = time.time()
 chunks = 5000000
@@ -72,7 +75,7 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
     eg_preds_df = None
 
     if g_meta.shape[0] > 0:
-        g_features = utils.preprocess_data(g_data, g_meta)
+        g_features = utils.feature_engineering(g_data, g_meta)
         g_preds = g_clf.predict_proba(g_features)
         g_preds_99 = utils.predict_99(g_preds)
         g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
@@ -82,7 +85,7 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_set.csv', chun
         preds_df = g_preds_df
 
     if eg_meta.shape[0] > 0:
-        eg_features = utils.preprocess_data(eg_data, eg_meta)
+        eg_features = utils.feature_engineering(eg_data, eg_meta)
         eg_preds = eg_clf.predict_proba(eg_features)
         eg_preds_99 = utils.predict_99(eg_preds)
         eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
@@ -116,7 +119,7 @@ g_preds_df = None
 eg_preds_df = None
 
 if g_meta.shape[0] > 0:
-    g_features = utils.preprocess_data(g_data, g_meta)
+    g_features = utils.feature_engineering(g_data, g_meta)
     g_preds = g_clf.predict_proba(g_features)
     g_preds_99 = utils.predict_99(g_preds)
     g_preds_df = utils.store_preds(g_preds, utils.g_class_names(), g_preds_99, g_meta)
@@ -126,7 +129,7 @@ if g_meta.shape[0] > 0:
     preds_df = g_preds_df
 
 if eg_meta.shape[0] > 0:
-    eg_features = utils.preprocess_data(eg_data, eg_meta)
+    eg_features = utils.feature_engineering(eg_data, eg_meta)
     eg_preds = eg_clf.predict_proba(eg_features)
     eg_preds_99 = utils.predict_99(eg_preds)
     eg_preds_df = utils.store_preds(eg_preds, utils.eg_class_names(), eg_preds_99, eg_meta)
