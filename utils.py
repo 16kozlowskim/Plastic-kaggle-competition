@@ -13,6 +13,7 @@ from keras.regularizers import l2
 from keras.models import Sequential, load_model
 from keras.layers import Dense, BatchNormalization, Dropout, Activation, Conv2D, Flatten, MaxPooling2D
 from keras.utils import to_categorical
+from hyperopt import hp, tpe, STATUS_OK, Trials
 
 from tsfresh.feature_extraction import extract_features
 
@@ -70,12 +71,7 @@ def plot_loss_acc(history):
 def create_model(input_dimensions, output_dimensions):
     model = Sequential()
 
-    model.add(Dense(2056, input_dim=input_dimensions))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.5))
-
-    model.add(Dense(1024))
+    model.add(Dense(1024, input_dim=input_dimensions))
     model.add(Activation('relu'))
     model.add(BatchNormalization())
     model.add(Dropout(0.5))
@@ -284,14 +280,13 @@ def lgb_multi_weighted_logloss_wrapper(classes):
     return lgb_multi_weighted_logloss
 
 def train_gbm(features, wtable, labels, classes, target):
-
     clfs = []
-    folds = StratifiedKFold(n_splits=4, shuffle=True)
+    folds = StratifiedKFold(n_splits=5, shuffle=True)
     oof_preds = np.zeros((len(features), len(classes)))
     lgb_params = {
     'boosting_type': 'gbdt',
     'objective': 'multiclass',
-    'num_class': 14,
+    'num_class': len(classes),
     'metric': 'multi_logloss',
     'learning_rate': 0.03,
     'subsample': .9,
@@ -300,7 +295,7 @@ def train_gbm(features, wtable, labels, classes, target):
     'reg_lambda': .01,
     'min_split_gain': 0.01,
     'min_child_weight': 10,
-    'n_estimators': 1000,
+    'n_estimators': 5000,
     'silent': -1,
     'verbose': -1,
     'max_depth': 3
@@ -323,12 +318,12 @@ def train_gbm(features, wtable, labels, classes, target):
         )
 
         oof_preds[val_, :] = model.predict_proba(x_valid, num_iteration=model.best_iteration_)
+        print multi_weighted_logloss(classes, labels[val_], oof_preds[val_, :])
         clfs.append(model)
 
-    print('MULTI WEIGHTED LOG LOSS : %.5f ' % multi_weighted_logloss(classes,labels,oof_preds))
+    print multi_weighted_logloss(classes, labels, oof_preds)
 
     return clfs
-
 
 def train_mlp(features, wtable, labels, classes, target_map, is_galactic):
 
@@ -456,7 +451,7 @@ def store_preds(preds, class_names, preds_99, meta):
     preds_df = pd.DataFrame(preds, columns=class_names)
     #meta = meta.set_index(preds_df.index)
     preds_df['object_id'] = meta#['object_id']
-    preds_df['class_99'] = 0.14 * preds_99 / np.mean(preds_99)
+    preds_df['class_99'] = preds_99
     return preds_df
 
 def get_wtables(path_to_data):

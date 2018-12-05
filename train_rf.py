@@ -18,8 +18,11 @@ g_train, eg_train, g_meta, eg_meta, g_target, eg_target = utils.gal_split_data(t
 
 g_features = utils.feature_engineering(g_train, g_meta)
 
-eg_features = utils.feature_engineering(eg_train, eg_meta)
 
+eg_features = utils.feature_engineering(eg_train, eg_meta)
+print eg_features.columns
+import sys
+sys.exit()
 
 #X_train, X_test, y_train, y_test = train_test_split(g_features, g_target, test_size = 0.1, random_state=0)
 

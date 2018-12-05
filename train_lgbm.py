@@ -22,7 +22,7 @@ g_wtable, g_labels, g_classes, g_target_map = utils.preprocess_target(g_target)
 g_clfs = utils.train_gbm(g_features, g_wtable, g_labels, g_classes, g_target)
 
 
-folds = StratifiedKFold(n_splits = 4, shuffle = True)
+folds = StratifiedKFold(n_splits = 5, shuffle = True)
 
 g_features = pd.read_csv(path_to_data + 'test_g_features.csv', header=0)
 
@@ -38,7 +38,7 @@ for i in utils.eg_class_names():
     g_preds_df[i] = 0
 g_preds_df = g_preds_df.reindex_axis(['object_id']+utils.g_class_names()+utils.eg_class_names()+['class_99'], axis=1)
 
-g_preds_df.to_csv('predictions.csv',  header=True, mode='a', index=False)
+g_preds_df.to_csv('predictions2.csv',  header=True, mode='a', index=False)
 
 
 eg_features = utils.feature_engineering(eg_train, eg_meta)
@@ -56,4 +56,4 @@ for i_c, data_chunk in enumerate(pd.read_csv(path_to_data + 'test_eg_features.cs
         eg_preds_df[i] = 0
     eg_preds_df = eg_preds_df.reindex_axis(['object_id']+utils.g_class_names()+utils.eg_class_names()+['class_99'], axis=1)
 
-    eg_preds_df.to_csv('predictions.csv',  header=False, mode='a', index=False)
+    eg_preds_df.to_csv('predictions2.csv',  header=False, mode='a', index=False)
